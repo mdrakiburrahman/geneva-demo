@@ -112,9 +112,7 @@ On the other side, we see:
 ## Simple containerized app that writes to the endpoint
 
 ```powershell
-cd "D:\Github\opentelemetry-dotnet"
-mkdir -p "geneva-demo"
-cd "geneva-demo"
+cd "D:\Github\geneva-demo"
 
 # Create a new console app
 #
@@ -124,7 +122,7 @@ cd "App"
 
 # Add packages
 #
-dotnet add package OpenTelemetry
+dotnet add package OpenTelemetry --version 1.5.0-alpha.2
 
 # Run it
 #
