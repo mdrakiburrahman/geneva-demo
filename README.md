@@ -122,7 +122,8 @@ cd "App"
 
 # Add packages
 #
-dotnet add package OpenTelemetry --version 1.5.0-alpha.2
+dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol.Logs --version 1.5.0-alpha.2
+dotnet add package OpenTelemetry.Exporter.Console --version 1.5.0-alpha.2
 
 # Run it
 #
