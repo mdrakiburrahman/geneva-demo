@@ -1,47 +1,84 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
-namespace Geneva.Demo
+namespace LoggingOtelExporter
 {
-    public class Program
+    internal class Program
     {
-        public static async Task Main(string[] args)
+        static void Main(string[] args)
         {
-            string loggingendpoint =
-                Environment.GetEnvironmentVariable("FIRSTPARTY_LOGGING_GRPC_ENDPOINT")
-                ?? "localhost";
+            string tracingendpoint = Environment.GetEnvironmentVariable("FIRSTPARTY_TRACING_GRPC_ENDPOINT") ?? "localhost";
+            string loggingendpoint = Environment.GetEnvironmentVariable("FIRSTPARTY_LOGGING_GRPC_ENDPOINT") ?? "localhost";
 
-            AppContext.SetSwitch(
-                "System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport",
-                true
-            );
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
             using var loggerFactory = LoggerFactory.Create(builder =>
             {
-                builder.AddOpenTelemetry(
-                    (opt) =>
-                    {
-                        opt.IncludeFormattedMessage = true;
-                        opt.IncludeScopes = true;
-
-                        opt.AddOtlpExporter(otlpOptions =>
+                builder.Services.AddOpenTelemetryTracing(
+                        b =>
                         {
-                            otlpOptions.Endpoint = new Uri($"http://{loggingendpoint}");
-                            otlpOptions.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-                        });
-                        opt.AddConsoleExporter();
-                    }
-                );
+                            b.SetSampler(new AlwaysOnSampler())
+                            .AddSource("companyname.product.instrumentationlibrary");
+                        }
+                    );
+
+                builder.AddOpenTelemetry(options =>
+                {
+                    options.AddConsoleExporter();
+                    options.AddOtlpExporter(
+                            otelOptions => {
+                                otelOptions.Endpoint = new Uri($"http://{loggingendpoint}");
+                                otelOptions.Protocol = OtlpExportProtocol.Grpc;
+                            }
+                        );
+                });
             });
 
-            var logger = loggerFactory.CreateLogger<Program>();
+            var serviceName = "MyCompany.MyProduct.MyService";
+            var serviceVersion = "1.0.0";
 
-            var counter = 0;
-            var max = args.Length is not 0 ? Convert.ToInt32(args[0]) : -1;
-            while (max is -1 || counter < max)
+
+            using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+                .AddSource(serviceName)
+                .SetResourceBuilder(
+                    ResourceBuilder.CreateDefault()
+                        .AddService(serviceName: serviceName, serviceVersion: serviceVersion))
+                .AddConsoleExporter()
+                .AddOtlpExporter(config =>
+                    {
+                        config.Endpoint = new Uri($"http://{tracingendpoint}");
+                        config.Protocol = OtlpExportProtocol.Grpc;
+                    }
+                )
+                .Build();
+
+            var MyActivitySource = new ActivitySource(serviceName);
+
+            var logger = loggerFactory.CreateLogger("Log");
+
+            logger.LogInformation($"FIRSTPARTY_TRACING_GRPC_ENDPOINT: {tracingendpoint} FIRSTPARTY_LOGGING_GRPC_ENDPOINT {loggingendpoint}");
+
+            while (true)
             {
-                logger.LogInformation($"[{loggingendpoint}] OTEL 1.3.0-rc.2 Counter: {++counter}");
-                await Task.Delay(TimeSpan.FromMilliseconds(1_0000));
+
+                using var activity = MyActivitySource.StartActivity("SayHello");
+                {
+                    activity?.SetTag("foo", 1);
+                    activity?.SetTag("bar", "Hello, World!");
+
+                    activity?.SetStatus(ActivityStatusCode.Ok);
+
+                    logger.LogInformation("Hello from {name} {price}.", "tomato", 2.99);
+                }
+
+                Thread.Sleep(TimeSpan.FromSeconds(5));
             }
         }
     }
