@@ -25,7 +25,7 @@ namespace LoggingOtelExporter
                         b =>
                         {
                             b.SetSampler(new AlwaysOnSampler())
-                            .AddSource("companyname.product.instrumentationlibrary");
+                            .AddSource("Microsoft.AzureArcData.GenevaDemo.LoggingOtelExporter");
                         }
                     );
 
@@ -41,7 +41,7 @@ namespace LoggingOtelExporter
                 });
             });
 
-            var serviceName = "MyCompany.MyProduct.MyService";
+            var serviceName = "Microsoft.AzureArcData.GenevaDemo";
             var serviceVersion = "1.0.0";
 
 
@@ -65,17 +65,18 @@ namespace LoggingOtelExporter
 
             logger.LogInformation($"FIRSTPARTY_TRACING_GRPC_ENDPOINT: {tracingendpoint} FIRSTPARTY_LOGGING_GRPC_ENDPOINT {loggingendpoint}");
 
+            int counter = 0;
             while (true)
             {
 
                 using var activity = MyActivitySource.StartActivity("SayHello");
                 {
-                    activity?.SetTag("foo", 1);
-                    activity?.SetTag("bar", "Hello, World!");
+                    activity?.SetTag("Tag1", 1);
+                    activity?.SetTag("Tag2", "Tagged message");
 
                     activity?.SetStatus(ActivityStatusCode.Ok);
 
-                    logger.LogInformation("Hello from {name} {price}.", "tomato", 2.99);
+                    logger.LogInformation($"[Logging endpoint: {loggingendpoint}] [Tracing endpoint: {tracingendpoint}] [OTEL: 1.3.0-rc.2] Counter: {++counter}");
                 }
 
                 Thread.Sleep(TimeSpan.FromSeconds(5));
