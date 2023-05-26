@@ -24,12 +24,10 @@ namespace Geneva.Demo
                             true
                         );
 
-                        var protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-
                         opt.AddOtlpExporter(otlpOptions =>
                         {
                             otlpOptions.Endpoint = new Uri($"http://{loggingendpoint}");
-                            otlpOptions.Protocol = protocol;
+                            otlpOptions.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
                         });
                         opt.AddConsoleExporter();
                     }
@@ -43,7 +41,7 @@ namespace Geneva.Demo
             while (max is -1 || counter < max)
             {
                 logger.LogInformation($"[{loggingendpoint}] OTEL Counter: {++counter}");
-                await Task.Delay(TimeSpan.FromMilliseconds(1_000));
+                await Task.Delay(TimeSpan.FromMilliseconds(1_5000));
             }
         }
     }
